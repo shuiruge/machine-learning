@@ -16,11 +16,13 @@
 #     x[5]: numbers of two-in-one-line while the third is still unfilled for enermy;
 #     x[6]: numbers of three-in-one-line for enermy.
 #   and by virtue of Python's terrible design, let x[0] = 1.
-#  and V_hat(x[1] >=1) = 100, V_hat(x[4]>=1) = -100
+#  and V_hat(x = [?, ?, ?, 1, ?, ?, ?]) = 100, V_hat(?, ?, ?, ?, ?, ?, 1) = -100.
+#  However, the problem is how can this be compatible with the linear parameterization we employed??? 
 # -------------------------------------------------
 # Some problems are left:
 # i)   how to set the input parameters, i.e. the initial w, the lms_x;
-# ii)  how to set the `Successor`?
+# ii)  how to set the `Successor`;
+# iii) how can the previous restrictions of V_hat be compatible with the linear parameterization we employed?
     
 from math import sqrt
 
@@ -42,8 +44,10 @@ def copy_board(board):
 def count_x(board):
     """ board -> x
     """
-    x = [1, 0, 0, 0, 0, 0, 0]
-    def count_in_line(lst):
+    x = [1, 0, 0, 0, 0, 0, 0]  # initialize x
+    def count_x_in_line(lst):
+        """ change the value of x at the outside environment.
+        """
         if lst.count("O") == 3:
             x[3] += 1
         elif lst.count("X") == 3:
@@ -63,19 +67,19 @@ def count_x(board):
     # count in rows:
     for row in range(3):
         lst = [board[row][column] for column in range(3)]
-        count_in_line(lst)
+        count_x_in_line(lst)
     # count in columns:
     for column in range(3):
         lst = [board[row][column] for row in range(3)]
-        count_in_line(lst)
+        count_x_in_line(lst)
     # count in obliques:
     for obl in range(3):
         if obl == 0:
             lst = [board[0][0], board[1][1], board[2][2]]
-            count_in_line(lst)
+            count_x_in_line(lst)
         elif obl == 2:
             lst = [board[2][0], board[1][1], board[0][2]]
-            count_in_line(lst)
+            count_x_in_line(lst)
     return x
 
 def V_hat(w, board):
@@ -95,23 +99,25 @@ def game_overQ(board):
         True
     return result
 
+
+def arbitrary_move(board):
+    """ board -> board
+    """
+    result = copy_board(board)
+    for row in range(3):
+        for column in range(3):
+            if board[row][column] == "?": # empty?
+                result[row][column] = "O"
+                break
+            break
+        break  # it seems that WY's suggestion on dealing with `break` makes bugs.
+    return result
+
 def best_move(w, board):
     """ w * board -> board
 
         maximize V_hat
     """
-    def arbitrary_move(board):
-        """ board -> board
-        """
-        result = copy_board(board)
-        for row in range(3):
-            for column in range(3):
-                if board[row][column] == "?": # empty?
-                    result[row][column] = "O"
-                    break
-                break
-            break
-        return result
     if game_overQ(board) == True:
         print("Error: best_move: the input board has made the game over! No move is needed. an initialized board is as output.")
         return initialize_board()
@@ -130,7 +136,7 @@ def best_move(w, board):
             # made yet. an arbitrary move is
             # called for
             result = arbitrary_move(board)
-        return result
+    return result
 
      
 def successor(w, board):
@@ -141,22 +147,28 @@ def successor(w, board):
 
             replace "O" <--> "X"
         """
-        result = copy_board(board)
+        result = initialize_board()
         for row in range(3):
             for column in range(3):
                 if board[row][column] == "O":
                     result[row][column] = "X"
                 elif board[row][column] == "X":
                     result[row][column] = "O"
+                else:
+                    result[row][column] = "?"
         return result
-    board = best_move(w, board)
-    board = board_for_enermy(best_move(w, board_for_enermy(board)))
-    return board
+    moved_by_subject = best_move(w, board)
+    enermys_board = board_for_enermy(moved_by_subject)
+    moved_by_enermy = best_move(w, enermys_board)
+    successor_board = board_for_enermy(moved_by_enermy)
+    return successor_board
+
 
 def V_train(w, board):
     """ w * board -> Real
     """
     return V_hat(w, successor(w, board))
+
 
 def normalize_w(w):
     """ [Real] -> [Real]
@@ -170,7 +182,8 @@ def w_update(w, lms_eta, lms_x, board):
     return normalize_w([w[i] +\
                           lms_eta * lms_x[i] *\
                           (V_train(w, board) - V_hat(w, board)) \
-                        for i in range(len(w))]
+                        for i in range(len(w))])
+
 
 ## default max_steps
 max_steps = 5000
@@ -178,7 +191,7 @@ max_steps = 5000
 def training_w(w_init, lms_eta, lms_x):
     """ w_init * lms_eta * lms_x * board -> w
     """
-    w = w_init
+    w = w_init[:]
     board = initialize_board()
     for step in range(max_steps):
         if step >= max_steps:
@@ -191,6 +204,7 @@ def training_w(w_init, lms_eta, lms_x):
                 board = successor(w, board)
                 w = w_update(w, lms_eta, lms_x, board)
     return w
+
 
 # Show the Result:
 def print_board(board):
