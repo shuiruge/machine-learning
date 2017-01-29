@@ -111,7 +111,10 @@ def arbitrary_move(board):
                 break
             break
         break  # it seems that WY's suggestion on dealing with `break` makes bugs.
-    return result
+    if result == board:
+        print("Error from arbitrary_move: there's no empty position for making a move!")
+    else:
+        return result
 
 def best_move(w, board):
     """ w * board -> board
@@ -119,7 +122,7 @@ def best_move(w, board):
         maximize V_hat
     """
     if game_overQ(board) == True:
-        print("Error: best_move: the input board has made the game over! No move is needed. an initialized board is as output.")
+        print("Error from best_move: the input board has made the game over! No move is needed. an initialized board is as output.")
         return initialize_board()
     else:
         result = copy_board(board)
@@ -158,8 +161,7 @@ def successor(w, board):
                     result[row][column] = "?"
         return result
     moved_by_subject = best_move(w, board)
-    enermys_board = board_for_enermy(moved_by_subject)
-    moved_by_enermy = best_move(w, enermys_board)
+    moved_by_enermy = best_move(w, board_for_enermy(moved_by_subject))
     successor_board = board_for_enermy(moved_by_enermy)
     return successor_board
 
