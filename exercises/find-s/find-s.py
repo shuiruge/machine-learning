@@ -1,6 +1,5 @@
 # Exercise 2.10 of Machine Learning by T. Mitchell
 # -----------------------------------------------
-# Some problems are left:
 
 def most_special_hypothesis():
     return ["empty", "empty", "empty", "empty", "empty", "empty"]
