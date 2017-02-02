@@ -32,15 +32,9 @@ print("V_train(w_init, board):")
 print(V_train(w_init, board))
 print()
 
-## How to set the lms_eta and lms_x???
-lms_eta = 0.1
-lms_x = [5 * random()] + [5 * random() for i in range(3)] + [-5 * random() for i in range(3)]
-print("lms_x:")
-print(lms_x)
-print()
-
-print("w_update(w_init, lms_eta, lms_x, board):")
-print(w_update(w_init, lms_eta, lms_x, board))
+learning_rate = 1
+print("w_update(w_init, learning_rate, board):")
+print(w_update(w_init, learning_rate, board))
 print()
 
 print("w_init:")
@@ -48,9 +42,9 @@ print(w_init)
 print()
 
 ## start training:
-max_steps = 5000
+max_steps = 10000
 
-w_learned = training_w(w_init, lms_eta, lms_x)
+w_learned = training_w(w_init, learning_rate)
 
 print("w_learned:")
 print(w_learned)

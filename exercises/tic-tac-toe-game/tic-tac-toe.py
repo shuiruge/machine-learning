@@ -5,7 +5,7 @@
 # T: play tic-tac-toe
 # P: win the game
 # E: play with ITSELF
-# target function: V: board -> reals
+# target function: V: Board -> Real
 # representation of target function:
 #   V_hat(b) = w[0] + w[1] * x[1] + w[2] * x[2] + w[3] * x[3] + w[4] * x[4] + w[5] * x[5] + w[6] * x[6]
 #   where:
@@ -20,7 +20,7 @@
 #  However, the problem is how can this be compatible with the linear parameterization we employed??? 
 # -------------------------------------------------
 # Some problems are left:
-# i)   how to set the input parameters, i.e. the initial w, the lms_x;
+# i)   how to set the input parameters, i.e. the initial w;
 # ii)  how to set the `Successor`;
 # iii) how can the previous restrictions of V_hat be compatible with the linear parameterization we employed?
     
@@ -42,7 +42,7 @@ def copy_board(board):
     return result
 
 def count_x(board):
-    """ board -> x
+    """ Board -> [x]
     """
     x = [1, 0, 0, 0, 0, 0, 0]  # initialize x
     def count_x_in_line(lst):
@@ -83,7 +83,7 @@ def count_x(board):
     return x
 
 def V_hat(w, board):
-    """ w * board -> Real
+    """ w * Board -> Real
     """
     x = count_x(board)
     return sum(w[i] * x[i] for i in range(7))
@@ -91,62 +91,61 @@ def V_hat(w, board):
 def game_overQ(board):
     def flatten_board(board):
         return [y for x in board for y in x]
-    result = False
     x = count_x(board)
     if x[3] >= 1 or x[6] >= 1: # someone wins
-        True
+        return True
     elif flatten_board(board).count("?") == 0: # none is empty
-        True
-    return result
-
-
-def arbitrary_move(board):
-    """ board -> board
-    """
-    result = copy_board(board)
-    for row in range(3):
-        for column in range(3):
-            if board[row][column] == "?": # empty?
-                result[row][column] = "O"
-                break
-            break
-        break  # it seems that WY's suggestion on dealing with `break` makes bugs.
-    if result == board:
-        print("Error from arbitrary_move: there's no empty position for making a move!")
+        return True
     else:
-        return result
+        return False
 
 def best_move(w, board):
-    """ w * board -> board
+    """ [w] * Board -> Board
 
-        maximize V_hat
+    maximize V_hat
+    if game has been over, then do nothing
     """
-    if game_overQ(board) == True:
-        print("Error from best_move: the input board has made the game over! No move is needed. an initialized board is as output.")
-        return initialize_board()
-    else:
+    def arbitrary_move(board):
+        """ Board -> Board
+        """
         result = copy_board(board)
+        for row in range(3):
+            for column in range(3):
+                if board[row][column] == "?": # empty?
+                    result[row][column] = "O"
+                    break
+                break
+            break  # it seems that WY's suggestion on dealing with `break` makes bugs.
+        return result
+    result = copy_board(board)
+    if game_overQ(board) == True:
+        return result
+    else:
         for row in range(3):
             for column in range(3):
                 next_try = copy_board(board)
                 if board[row][column] == "?": # empty?
                     next_try[row][column] = "O"
                     if V_hat(w, next_try) > V_hat(w, result):
-                        result = next_try
+                        result = copy_board(next_try)
         if result == board:
             # that is, V_hat(w, board) has been
             # the maximum, thus no move has been
             # made yet. an arbitrary move is
             # called for
             result = arbitrary_move(board)
-    return result
+        return result
 
      
 def successor(w, board):
-    """ w * board -> board
+    """ [w] * Board -> Board
+    
+    There's possibility that before enermy's move, game has been over.
+    This is the reason why `best_move` does nothing
+    if game is over. And this is also the situation in real world.
     """
     def board_for_enermy(board):
-        """ board -> board
+        """ Board -> Board
 
             replace "O" <--> "X"
         """
@@ -167,7 +166,7 @@ def successor(w, board):
 
 
 def V_train(w, board):
-    """ w * board -> Real
+    """ [w] * Board -> Real
     """
     return V_hat(w, successor(w, board))
 
@@ -176,35 +175,31 @@ def normalize_w(w):
     """ [Real] -> [Real]
     """
     norm = sqrt(sum(item**2 for item in w))
-    return [item/norm for item in w]
+    return [(100 * item / norm) for item in w]
 
-def w_update(w, lms_eta, lms_x, board):
-    """ w * lms_eta * lms_x * board -> w
+def w_update(w, learning_rate, board):
+    """ [w] * Real * Board -> [w]
     """
+    x = count_x(board)
     return normalize_w([w[i] +\
-                          lms_eta * lms_x[i] *\
-                          (V_train(w, board) - V_hat(w, board)) \
+                          learning_rate * (V_train(w, board) - V_hat(w, board)) * x[i]
                         for i in range(len(w))])
 
 
 ## default max_steps
 max_steps = 5000
 
-def training_w(w_init, lms_eta, lms_x):
-    """ w_init * lms_eta * lms_x * board -> w
+def training_w(w_init, learning_rate):
+    """ [w_init] * Real -> [w]
     """
     w = w_init[:]
     board = initialize_board()
     for step in range(max_steps):
-        if step >= max_steps:
-            break
+        if game_overQ(board) == True:
+            board = initialize_board()
         else:
-            x = count_x(board)
-            if game_overQ(board) == True:
-                board = initialize_board()
-            else:
-                board = successor(w, board)
-                w = w_update(w, lms_eta, lms_x, board)
+            board = successor(w, board)
+            w = w_update(w, learning_rate, board)
     return w
 
 
