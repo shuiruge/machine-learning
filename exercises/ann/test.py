@@ -6,4 +6,5 @@ w = ann['init_weights']
 a = ann['outputs_from_units']
 print(w)
 print()
+
 print(a(w, [1, 2]))
