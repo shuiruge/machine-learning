@@ -72,44 +72,44 @@ def initialize_ann(scale, o_func):
     return {"init_weights": generate_initialized_weights(scale),
             "outputs_from_units": lambda weights, inpt: outputs_from_units(scale, o_func, weights, inpt)}
 
-def back_propagation(learning_rate, scale, o_func, training_data):
-    """ [Int] * (Real -> Real) * [{'input': [Real], 'target': [Real]}]
+def back_propagation(learning_rate, scale, o_func, training_data, times_of_training):
+    """ Real * [Int] * (Real -> Real) * [{'input': [Real], 'target': [Real]}] * Int -> [[[Real]]]
     
     follow the notations in table 4-2
     """
     ann = initialize_ann(scale, o_func)
     w = ann['init_weights']
-    def training():
+    def training(w0):
+        w = w0[:]
         for sample in training_data:
-            # 1
             o = ann['outputs_from_units'](w, sample['input'])
-            def compute_x():
-                x = [o[layer] for layer in range(1, len(scale) - 1)]
-                x.prepend(sample['input'])
-                x.prepend(None)
+            def generate_x():
+                x = [None]
+                x.append(sample['input'].append(1))
+                for layer in range(1, len(scale) - 1):
+                    x.append(o[layer].append(1))
                 return x
-            x = comput_x()
-            # it benefits to reverse since it's **back**-propagating
-            o.reverse()
+            x = generate_x()
             def generate_delta():
+                o.reverse()
+                w_rev = w[:].reverse() # it benefits to reverse since it's **back**-propagating
                 delta = []
-                # 2
+                # for output_units
                 t = sample['target']
-                delta_output = [o[0][i] * (1 - o[0][i]) * (t[i] - o[0][i])
-                                for i in range(len(t))]
+                delta_output = [o[0][unit] * (1 - o[0][unit]) * (t[unit] - o[0][unit])
+                                for unit in range(len(t))]
                 delta.append(delta_output)
-                # 3
+                # for hidden_units
                 delta_previous = delta_output[:]
-                for h in range(1, len(o) - 1): # the last layer (the groud layer before reverse) is None.
-                    delta_hidden = [o[h][i] * (1 - o[h][i]) * sum([w[k][h] * delta_output[k]
-                                                                   for k in range(len(delta_previous))])
-                                    for i in range(len(o[h]))]
+                delta_hidden = []
+                for layer in range(1, len(o) - 1): # the last layer (the groud layer before reverse) is None.
+                    delta_hidden = [o[layer][unit] * (1 - o[layer][unit]) * sum([w_rev[layer - 1][k][unit] * delta_output[k] for k in range(len(delta_previous))])
+                                    for unit in range(len(o[layer]))]
                     delta.append(delta_hidden)
                     delta_previous = delta_hidden[:]
                 delta.reverse() # we shall reverse back for employing eq.(4.16)
                 return delta
             delta = generate_delta()
-            # 4
             def update_w(w):
                 result = w[:]
                 for layer in range(1, len(w)):
@@ -119,8 +119,8 @@ def back_propagation(learning_rate, scale, o_func, training_data):
                                           for i in len(w[layer][unit])]
                 return result
             w = update_w(w)
-    max_step = 10
-    for step in max_step:
-        training()
+        return w
+    for i in range(times_of_training):
+        training(w)
     return w
 ## needs test!       
